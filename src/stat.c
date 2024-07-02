@@ -17,6 +17,22 @@ static int64_t start_time(AVStream *stream)
     return stream->start_time;
 }
 
+static void correct_aspect_ratio(int *width, int *height, AVRational aspect_ratio)
+{
+    const AVRational ONE = av_make_q(1, 1);
+    const int cmp = av_cmp_q(aspect_ratio, ONE);
+
+    if (cmp == 0 || aspect_ratio.num == 0 || aspect_ratio.den == 0) {
+        // Return width and height unchanged
+    } else if (cmp < 0) {
+        // Reduce width, leave height unchanged
+        *width = *width * av_q2d(aspect_ratio);
+    } else {
+        // Reduce height, leave width unchanged
+        *height = *height * av_q2d(av_inv_q(aspect_ratio));
+    }
+}
+
 int main(int argc, char *argv[])
 {
     AVFormatContext *format = NULL;
@@ -80,9 +96,14 @@ int main(int argc, char *argv[])
     if (!mediatools_validate_duration(dur))
         return -1;
 
-    AVCodecParameters *vpar = format->streams[vstream_idx]->codecpar;
+    AVStream *vstream = format->streams[vstream_idx];
+    AVCodecParameters *vpar = vstream->codecpar;
+    AVRational aspect_ratio = vstream->sample_aspect_ratio;
+    int width = vpar->width;
+    int height = vpar->height;
+    correct_aspect_ratio(&width, &height, aspect_ratio);
 
-    printf("%ld %lu %d %d %d %d\n", statbuf.st_size, frames, vpar->width, vpar->height, dur.num, dur.den);
+    printf("%ld %lu %d %d %d %d\n", statbuf.st_size, frames, width, height, dur.num, dur.den);
 
     avformat_close_input(&format);
 
