@@ -5,8 +5,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "validation.h"
+#include "stat.h"
 #include "util.h"
+#include "validation.h"
 
 static int64_t start_time(AVStream *stream)
 {
@@ -36,6 +37,7 @@ static void correct_aspect_ratio(int *width, int *height, AVRational aspect_rati
 int main(int argc, char *argv[])
 {
     AVFormatContext *format = NULL;
+    bool format_is_animated = false;
     struct stat statbuf;
     AVPacket pkt;
 
@@ -61,7 +63,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    if (!mediatools_validate_video(format)) {
+    if (!mediatools_validate_video(format, &format_is_animated)) {
         // Error is printed by validation function
         return -1;
     }
@@ -103,7 +105,16 @@ int main(int argc, char *argv[])
     int height = vpar->height;
     correct_aspect_ratio(&width, &height, aspect_ratio);
 
-    printf("%ld %lu %d %d %d %d\n", statbuf.st_size, frames, width, height, dur.num, dur.den);
+    const MediaStat result = {
+        .is_animated = format_is_animated || frames > 1,
+        .frames = frames,
+        .width = width,
+        .height = height,
+        .duration_num = dur.num,
+        .duration_den = dur.den,
+    };
+
+    print_stat(&result);
 
     avformat_close_input(&format);
 

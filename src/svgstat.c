@@ -4,8 +4,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "validation.h"
-#include "util.h"
+#include "stat.h"
 
 typedef struct RsvgHandle RsvgHandle;
 typedef struct RsvgDimensionData {
@@ -62,7 +61,16 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    printf("%ld %lu %d %d %d %d\n", statbuf.st_size, 1ul, dimensions.width, dimensions.height, 1, 25);
+    const MediaStat result = {
+        .is_animated = false,
+        .frames = 1,
+        .width = dimensions.width,
+        .height = dimensions.height,
+        .duration_num = 1,
+        .duration_den = 25,
+    };
+
+    print_stat(&result);
 
     return 0;
 }

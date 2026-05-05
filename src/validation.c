@@ -86,12 +86,14 @@ static int validate_audio_sample_format(enum AVSampleFormat format)
     }
 }
 
-int mediatools_validate_video(AVFormatContext *format)
+int mediatools_validate_video(AVFormatContext *format, bool *format_is_animated)
 {
     uint64_t num_vstreams = 0;
     uint64_t num_astreams = 0;
     int64_t vstream_idx = -1;
     int64_t astream_idx = -1;
+
+    *format_is_animated = false;
 
     for (size_t i = 0; i < format->nb_streams; ++i) {
         AVCodecParameters *codecpar = format->streams[i]->codecpar;
@@ -134,7 +136,8 @@ int mediatools_validate_video(AVFormatContext *format)
             return false;
         case AV_CODEC_ID_VP8:
         case AV_CODEC_ID_VP9:
-            ;
+            *format_is_animated = true;
+            break;
         }
 
         if (!validate_video_pixel_format(vpar->format)) {
@@ -149,7 +152,7 @@ int mediatools_validate_video(AVFormatContext *format)
                 return false;
             case AV_CODEC_ID_VORBIS:
             case AV_CODEC_ID_OPUS:
-                ;
+                break;
             }
 
             if (!validate_audio_sample_format(apar->format)) {
@@ -163,7 +166,8 @@ int mediatools_validate_video(AVFormatContext *format)
             printf("Bad video codec for GIF container (must be GIF)\n");
             return false;
         case AV_CODEC_ID_GIF:
-            ;
+            *format_is_animated = true;
+            break;
         }
 
         if (!validate_image_pixel_format(vpar->format)) {
@@ -176,7 +180,9 @@ int mediatools_validate_video(AVFormatContext *format)
             printf("Bad video codec for JPEG container (must be JPEG)\n");
             return false;
         case AV_CODEC_ID_MJPEG:
-            ;
+            // FFmpeg uses AV_CODEC_ID_MJPEG for both still JPEGs and MJPEG
+            // Seeing this codec ID does not imply animation
+            break;
         }
 
         if (!validate_image_pixel_format(vpar->format)) {
@@ -189,8 +195,10 @@ int mediatools_validate_video(AVFormatContext *format)
             printf("Bad video codec for PNG container (must be PNG)\n");
             return false;
         case AV_CODEC_ID_PNG:
+            break;
         case AV_CODEC_ID_APNG:
-            ;
+            *format_is_animated = true;
+            break;
         }
 
         if (!validate_image_pixel_format(vpar->format)) {
@@ -203,7 +211,8 @@ int mediatools_validate_video(AVFormatContext *format)
             printf("Bad video codec for SVG container (must be SVG)\n");
             return false;
         case AV_CODEC_ID_SVG:
-            ;
+            // SVG can be animated, but it's beyond the scope of this parser to check that
+            break;
         }
     } else {
         printf("Unknown input format\n");
